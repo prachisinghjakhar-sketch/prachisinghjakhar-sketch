@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ShoeKart — Single File Store</title>
+
+<style>
+  :root{
+    --bg:#f6f7fb;
+    --card:#ffffff;
+    --text:#0f172a;
+    --muted:#64748b;
+    --brand:#2563eb;
+    --brand2:#0ea5e9;
+    --danger:#ef4444;
+    --ok:#16a34a;
+    --border:#e5e7eb;
+    --shadow:0 12px 30px rgba(15,23,42,.08);
+    --radius:18px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text)}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1200px;margin:auto;padding:18px}
+  header{
+    position:sticky;top:0;z-index:10;
+    background:linear-gradient(90deg,var(--brand),var(--brand2));
+    color:#fff;
+    box-shadow:var(--shadow);
+  }
+  .head{
+    max-width:1200px;margin:auto;padding:14px 18px;
+    display:flex;gap:12px;align-items:center;justify-content:space-between;
+  }
+  .logo{font-weight:800;letter-spacing:.3px;font-size:20px}
+  .search{flex:1;max-width:520px;position:relative}
+  .search input{
+    width:100%;padding:12px 14px;border:none;border-radius:999px;outline:none;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.25);
+  }
+  .suggest{
+    position:absolute;left:0;right:0;top:44px;background:#fff;color:#000;
+    border-radius:14px;overflow:hidden;box-shadow:var(--shadow);display:none;
+  }
+  .suggest div{padding:10px 12px;border-bottom:1px solid #eee;cursor:pointer}
+  .suggest div:hover{background:#f3f4f6}
+  .btns{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .pill{
+    border:1px solid rgba(255,255,255,.35);
+    background:rgba(255,255,255,.12);
+    color:#fff;border-radius:999px;padding:10px 12px;
+    cursor:pointer;font-weight:700;font-size:13px;
+  }
+  .pill:hover{background:rgba(255,255,255,.22)}
+  .count{background:#fff;color:#000;border-radius:999px;padding:2px 8px;margin-left:6px;font-weight:800}
+
+  .grid{display:grid;grid-template-columns:280px 1fr;gap:16px;margin-top:18px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .pad{padding:14px}
+  .muted{color:var(--muted);font-size:13px}
+
+  .filters h3{margin:0 0 8px 0}
+  .filters select,.filters input{
+    width:100%;padding:10px;border-radius:12px;border:1px solid var(--border);outline:none;margin-top:10px
+  }
+  .row{display:flex;gap:10px;align-items:center;justify-content:space-between}
+  .products{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:14px}
+  .p{
+    border:1px solid var(--border);border-radius:18px;overflow:hidden;background:#fff;
+    display:flex;flex-direction:column;
+  }
+  .ph{
+    height:140px;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,#eef2ff,#e0f2fe);
+    font-size:46px;
+  }
+  .pc{padding:12px;display:flex;flex-direction:column;gap:8px}
+  .pt{font-weight:800}
+  .price{font-weight:900}
+  .strike{text-decoration:line-through;color:#94a3b8;font-weight:700;font-size:13px;margin-left:8px}
+  .tag{font-size:12px;background:#eff6ff;color:#1d4ed8;padding:4px 8px;border-radius:999px;display:inline-block}
+  .actions{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
+  button{
+    border:none;border-radius:12px;padding:10px 12px;cursor:pointer;font-weight:800
+  }
+  .b{background:var(--brand);color:#fff}
+  .b2{background:#0f172a;color:#fff}
+  .w{background:#fff;border:1px solid var(--border)}
+  .d{background:var(--danger);color:#fff}
+  .ok{background:var(--ok);color:#fff}
+  button:hover{filter:brightness(.98)}
+  .small{font-size:12px;color:var(--muted)}
+  .stars{font-size:13px}
+
+  .modal{position:fixed;inset:0;background:rgba(2,6,23,.55);display:none;align-items:center;justify-content:center;padding:18px;z-index:50}
+  .box{width:min(980px,100%);max-height:85vh;overflow:auto}
+  .box .head2{padding:14px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;justify-content:space-between}
+  .box .body{padding:14px}
+  .list{display:flex;flex-direction:column;gap:10px}
+  .item{border:1px solid var(--border);border-radius:16px;padding:12px;display:flex;gap:12px;align-items:center;justify-content:space-between}
+  .item .left{display:flex;gap:12px;align-items:center}
+  .thumb{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#eef2ff,#e0f2fe);display:flex;align-items:center;justify-content:center;font-size:28px}
+  .qty{display:flex;gap:8px;align-items:center}
+  .qty button{padding:8px 10px;border-radius:10px}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .inp{width:100%;padding:11px;border-radius:12px;border:1px solid var(--border);outline:none;margin-top:8px}
+
+  /* Dark mode */
+  body.dark{
+    --bg:#0b1220;
+    --card:#0f172a;
+    --text:#e5e7eb;
+    --muted:#9ca3af;
+    --border:#1f2937;
+    --shadow:0 12px 30px rgba(0,0,0,.35);
+  }
+  body.dark .p{background:#0f172a}
+  body.dark .w{background:#0f172a;color:#fff}
+  body.dark .suggest{background:#0f172a;color:#fff}
+  body.dark .suggest div{border-bottom:1px solid #1f2937}
+  body.dark .suggest div:hover{background:#111827}
+
+  @media(max-width:980px){
+    .grid{grid-template-columns:1fr}
+    .products{grid-template-columns:repeat(2,1fr)}
+  }
+  @media(max-width:560px){
+    .products{grid-template-columns:1fr}
+    .btns{gap:8px}
+  }
+</style>
+</head>
+
+<body>
+<header>
+  <div class="head">
+    <div class="logo">👟 ShoeKart</div>
+
+    <div class="search">
+      <input id="q" placeholder="Search shoes… (Nike, Adidas, Sneaker)" oninput="searchLive()" />
+      <div id="suggest" class="suggest"></div>
+    </div>
+
+    <div class="btns">
+      <div class="pill" onclick="toggleDark()">🌙</div>
+      <div class="pill" onclick="openRecent()">👀 Recent</div>
+      <div class="pill" onclick="openCompare()">⚖️ Compare</div>
+      <div class="pill" onclick="openWishlist()">🤍 Wishlist <span class="count" id="wCount">0</span></div>
+      <div class="pill" onclick="openCart()">🛒 Cart <span class="count" id="cCount">0</span></div>
+      <div class="pill" onclick="openAdmin()">🛠️ Admin</div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="grid">
+    <div class="card pad filters">
+      <h3>Filters</h3>
+      <div class="muted">Use filters to explore.</div>
+
+      <select id="cat" onchange="render()">
+        <option value="All">All Categories</option>
+        <option value="Sneakers">Sneakers</option>
+        <option value="Sports">Sports</option>
+        <option value="Formal">Formal</option>
+        <option value="Sandals">Sandals</option>
+      </select>
+
+      <select id="sort" onchange="render()">
+        <option value="popular">Sort: Popular</option>
+        <option value="low">Price: Low → High</option>
+        <option value="high">Price: High → Low</option>
+        <option value="rating">Rating</option>
+      </select>
+
+      <input id="maxp" type="number" placeholder="Max price (₹)" oninput="render()" />
+      <button class="w" style="width:100%;margin-top:10px" onclick="clearStorage()">🧹 Clear Saved Data</button>
+
+      <div class="muted" style="margin-top:10px">
+        Tip: This site saves cart/wishlist in localStorage.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="pad row">
+        <div>
+          <div style="font-size:18px;font-weight:900">Featured Shoes</div>
+          <div class="muted">Single-file ecommerce project (demo).</div>
+        </div>
+        <button class="b2" onclick="toast('Use Admin to add products 🛠️')">Help</button>
+      </div>
+      <div class="products" id="products"></div>
+    </div>
+  </div>
+</div>
+
+<!-- CART -->
+<div id="cartModal" class="modal">
+  <div class="card box">
+    <div class="head2">
+      <div style="font-weight:900">🛒 Cart</div>
+      <button class="w" onclick="closeCart()">Close</button>
+    </div>
+    <div class="body">
+      <div id="cartList" class="list"></div>
+      <div style="margin-top:12px" class="row">
+        <div>
+          <div class="muted">Total</div>
+          <div style="font-size:22px;font-weight:900" id="cartTotal">₹0</div>
+        </div>
+        <button class="ok" onclick="openCheckout()">Checkout</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CHECKOUT -->
+<div id="checkoutModal" class="modal">
+  <div class="card box">
+    <div class="head2">
+      <div style="font-weight:900">💳 Checkout</div>
+      <button class="w" onclick="closeCheckout()">Close</button>
+    </div>
+    <div class="body">
+      <div class="split">
+        <div class="card pad">
+          <div style="font-weight:900">Delivery Details</div>
+          <input id="name" class="inp" placeholder="Full Name" />
+          <input id="phone" class="inp" placeholder="Phone" />
+          <input id="addr" class="inp" placeholder="Address" />
+          <input id="city" class="inp" placeholder="City" />
+        </div>
+
+        <div class="card pad">
+          <div style="font-weight:900">Payment Method</div>
+          <select id="pay" class="inp">
+            <option>UPI</option>
+            <option>Card</option>
+            <option>Cash on Delivery</option>
+          </select>
+
+          <input id="coupon" class="inp" placeholder="Coupon (TRY10)" />
+          <button class="w" style="width:100%;margin-top:10px" onclick="applyCoupon()">Apply Coupon</button>
+
+          <div style="margin-top:10px">
+            <div class="muted">Payable</div>
+            <div style="font-size:22px;font-weight:900" id="payable">₹0</div>
+          </div>
+
+          <button class="ok" style="width:100%;margin-top:12px" onclick="placeOrder()">Place Order</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- WISHLIST -->
+<div id="wishModal" class="modal">
+  <div class="card box">
+    <div class="head2">
+      <div style="font-weight:900">🤍 Wishlist</div>
+      <button class="w" onclick="closeWishlist()">Close</button>
+    </div>
+    <div class="body">
+      <div id="wishList" class="list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- RECENT -->
+<div id="recentModal" class="modal">
+  <div class="card box">
+    <div class="head2">
+      <div style="font-weight:900">👀 Recently Viewed</div>
+      <button class="w" onclick="closeRecent()">Close</button>
+    </div>
+    <div class="body">
+      <div id="recentItems" class="list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- COMPARE -->
+<div id="compareModal" class="modal">
+  <div class="card box">
+    <div class="head2">
+      <div style="font-weight:900">⚖️ Compare (Max 2)</div>
+      <button class="w" onclick="closeCompare()">Close</button>
+    </div>
+    <div class="body">
+      <div id="compareItems" class="list"></div>
+      <button class="w" style="width:100%;margin-top:10px" onclick="clearCompare()">Clear Compare</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div id="adminModal" class="modal">
+  <div class="card box">
+    <div class="head2">
+      <div style="font-weight:900">🛠️ Admin Panel</div>
+      <button class="w" onclick="closeAdmin()">Close</button>
+    </div>
+    <div class="body">
+      <div class="split">
+        <div class="card pad">
+          <div style="font-weight:900">Add / Update Product</div>
+
+          <input id="adminId" class="inp" placeholder="Product ID (ex: p9)" />
+          <input id="adminName" class="inp" placeholder="Name" />
+          <input id="adminPrice" class="inp" type="number" placeholder="Price" />
+          <input id="adminMrp" class="inp" type="number" placeholder="MRP" />
+
+          <select id="adminCat" class="inp">
+            <option>Sneakers</option>
+            <option>Sports</option>
+            <option>Formal</option>
+            <option>Sandals</option>
+          </select>
+
+          <input id="adminImg" class="inp" placeholder="Emoji (ex: 👟)" />
+          <input id="adminDesc" class="inp" placeholder="Short Description" />
+
+          <button class="ok" style="width:100%;margin-top:10px" onclick="adminSave()">Save Product</button>
+          <button class="d" style="width:100%;margin-top:10px" onclick="adminClear()">Clear Form</button>
+        </div>
+
+        <div class="card pad">
+          <div style="font-weight:900">All Products</div>
+          <div id="adminList" class="list" style="margin-top:10px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" style="position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:12px 14px;border-radius:999px;display:none;z-index:999;font-weight:800"></div>
+
+<script>
+/* ===== DATA ===== */
+let products = JSON.parse(localStorage.getItem("products")) || [
+  {id:"p1",name:"Nike Air Zoom",price:2499,mrp:3999,cat:"Sneakers",img:"👟",rating:4.6,reviews:120,desc:"Lightweight & comfy."},
+  {id:"p2",name:"Adidas Runner Pro",price:1999,mrp:3499,cat:"Sports",img:"🏃",rating:4.4,reviews:90,desc:"Best for running."},
+  {id:"p3",name:"Puma Street",price:1799,mrp:2999,cat:"Sneakers",img:"🧢",rating:4.3,reviews:66,desc:"Street style sneaker."},
+  {id:"p4",name:"Bata Classic",price:999,mrp:1599,cat:"Formal",img:"👞",rating:4.1,reviews:40,desc:"Office formal shoes."},
+  {id:"p5",name:"Campus Flex",price:1299,mrp:2199,cat:"Sports",img:"⚡",rating:4.2,reviews:55,desc:"Gym & daily wear."},
+  {id:"p6",name:"Relax Sandals",price:699,mrp:1299,cat:"Sandals",img:"🩴",rating:4.0,reviews:30,desc:"Soft sandals for summer."}
+];
+
+let cart = JSON.parse(localStorage.getItem("cart")) || [];
+let wish = JSON.parse(localStorage.getItem("wish")) || [];
+let recentViewed = JSON.parse(localStorage.getItem("recentViewed")) || [];
+let compareList = JSON.parse(localStorage.getItem("compareList")) || [];
+let darkMode = localStorage.getItem("darkMode") === "1";
+let couponDiscount = 0;
+
+function save(){
+  localStorage.setItem("products", JSON.stringify(products));
+  localStorage.setItem("cart", JSON.stringify(cart));
+  localStorage.setItem("wish", JSON.stringify(wish));
+  localStorage.setItem("recentViewed", JSON.stringify(recentViewed));
+  localStorage.setItem("compareList", JSON.stringify(compareList));
+  localStorage.setItem("darkMode", darkMode ? "1" : "0");
+}
+
+function toast(msg){
+  const t=document.getElementById("toast");
+  t.innerText=msg;
+  t.style.display="block";
+  clearTimeout(window.__tt);
+  window.__tt=setTimeout(()=>t.style.display="none",1800);
+}
+
+function money(n){ return "₹"+Number(n||0).toFixed(0); }
+function getP(id){ return products.find(p=>p.id===id); }
+
+/* ===== RENDER ===== */
+function render(){
+  const cat=document.getElementById("cat").value;
+  const sort=document.getElementById("sort").value;
+  const maxp=Number(document.getElementById("maxp").value||0);
+  const q=(document.getElementById("q").value||"").toLowerCase().trim();
+
+  let list=[...products];
+
+  if(cat!=="All") list=list.filter(p=>p.cat===cat);
+  if(maxp>0) list=list.filter(p=>p.price<=maxp);
+  if(q) list=list.filter(p=>p.name.toLowerCase().includes(q) || p.cat.toLowerCase().includes(q));
+
+  if(sort==="low") list.sort((a,b)=>a.price-b.price);
+  if(sort==="high") list.sort((a,b)=>b.price-a.price);
+  if(sort==="rating") list.sort((a,b)=>b.rating-a.rating);
+
+  const box=document.getElementById("products");
+  box.innerHTML="";
+  list.forEach(p=>{
+    box.innerHTML += `
+      <div class="p">
+        <div class="ph">${p.img||"👟"}</div>
+        <div class="pc">
+          <div class="tag">${p.cat}</div>
+          <div class="pt">${p.name}</div>
+          <div class="row">
+            <div class="price">${money(p.price)} <span class="strike">${money(p.mrp)}</span></div>
+            <div class="stars">⭐ ${p.rating}</div>
+          </div>
+          <div class="small">${p.desc||""}</div>
+          <div class="actions">
+            <button class="b" onclick="addCart('${p.id}')">Add</button>
+            <button class="w" onclick="toggleWish('${p.id}')">🤍</button>
+            <button class="w" onclick="toggleCompare('${p.id}')">⚖️</button>
+            <button class="b2" onclick="openDetails('${p.id}')">View</button>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  updateCounts();
+}
+
+/* ===== SEARCH SUGGESTIONS ===== */
+function searchLive(){
+  const q=(document.getElementById("q").value||"").toLowerCase().trim();
+  const sug=document.getElementById("suggest");
+  if(!q){ sug.style.display="none"; sug.innerHTML=""; render(); return; }
+
+  const matches=products.filter(p=>p.name.toLowerCase().includes(q)).slice(0,6);
+  if(matches.length===0){ sug.style.display="none"; render(); return; }
+
+  sug.innerHTML = matches.map(p=>`<div onclick="pickSug('${p.name.replaceAll("'","")}')">${p.name}</div>`).join("");
+  sug.style.display="block";
+  render();
+}
+function pickSug(name){
+  document.getElementById("q").value=name;
+  document.getElementById("suggest").style.display="none";
+  render();
+}
+
+/* ===== CART ===== */
+function addCart(id){
+  const it=cart.find(x=>x.id===id);
+  if(it) it.qty++;
+  else cart.push({id,qty:1});
+  save(); updateCounts(); toast("Added to cart 🛒");
+}
+function openCart(){ document.getElementById("cartModal").style.display="flex"; renderCart(); }
+function closeCart(){ document.getElementById("cartModal").style.display="none"; }
+function renderCart(){
+  const list=document.getElementById("cartList");
+  list.innerHTML="";
+  let total=0;
+
+  if(cart.length===0){
+    list.innerHTML = `<div class="muted">Cart is empty.</div>`;
+    document.getElementById("cartTotal").innerText=money(0);
+    return;
+  }
+
+  cart.forEach(ci=>{
+    const p=getP(ci.id);
+    if(!p) return;
+    total += p.price * ci.qty;
+
+    list.innerHTML += `
+      <div class="item">
+        <div class="left">
+          <div class="thumb">${p.img||"👟"}</div>
+          <div>
+            <div style="font-weight:900">${p.name}</div>
+            <div class="small">${p.cat} • ${money(p.price)}</div>
+          </div>
+        </div>
+        <div class="qty">
+          <button class="w" onclick="chgQty('${p.id}',-1)">-</button>
+          <b>${ci.qty}</b>
+          <button class="w" onclick="chgQty('${p.id}',1)">+</button>
+          <button class="d" onclick="removeCart('${p.id}')">Remove</button>
+        </div>
+      </div>
+    `;
+  });
+
+  document.getElementById("cartTotal").innerText=money(total);
+}
+function chgQty(id,delta){
+  const it=cart.find(x=>x.id===id);
+  if(!it) return;
+  it.qty += delta;
+  if(it.qty<=0) cart = cart.filter(x=>x.id!==id);
+  save(); renderCart(); updateCounts();
+}
+function removeCart(id){
+  cart = cart.filter(x=>x.id!==id);
+  save(); renderCart(); updateCounts();
+}
+
+/* ===== CHECKOUT ===== */
+function openCheckout(){
+  if(cart.length===0){ toast("Cart empty!"); return; }
+  closeCart();
+  document.getElementById("checkoutModal").style.display="flex";
+  couponDiscount = 0;
+  updatePayable();
+}
+function closeCheckout(){ document.getElementById("checkoutModal").style.display="none"; }
+function cartSum(){
+  return cart.reduce((s,ci)=>{
+    const p=getP(ci.id);
+    return s + (p ? p.price*ci.qty : 0);
+  },0);
+}
+function updatePayable(){
+  const total=cartSum();
+  const pay=Math.max(0,total - couponDiscount);
+  document.getElementById("payable").innerText=money(pay);
+}
+function applyCoupon(){
+  const c=(document.getElementById("coupon").value||"").trim().toUpperCase();
+  const total=cartSum();
+  if(c==="TRY10"){
+    couponDiscount = Math.floor(total*0.10);
+    toast("Coupon applied ✅ 10% OFF");
+  }else{
+    couponDiscount = 0;
+    toast("Invalid coupon ❌");
+  }
+  updatePayable();
+}
+function placeOrder(){
+  const name=document.getElementById("name").value.trim();
+  const phone=document.getElementById("phone").value.trim();
+  const addr=document.getElementById("addr").value.trim();
+  const city=document.getElementById("city").value.trim();
+
+  if(!name||!phone||!addr||!city){ toast("Fill all details"); return; }
+
+  toast("Order placed 🎉 (Demo)");
+  cart=[];
+  save();
+  updateCounts();
+  closeCheckout();
+}
+
+/* ===== WISHLIST ===== */
+function toggleWish(id){
+  if(wish.includes(id)) wish = wish.filter(x=>x!==id);
+  else wish.push(id);
+  save(); updateCounts(); toast("Wishlist updated 🤍");
+}
+function openWishlist(){ document.getElementById("wishModal").style.display="flex"; renderWish(); }
+function closeWishlist(){ document.getElementById("wishModal").style.display="none"; }
+function renderWish(){
+  const list=document.getElementById("wishList");
+  list.innerHTML="";
+  if(wish.length===0){ list.innerHTML=`<div class="muted">Wishlist empty.</div>`; return; }
+
+  wish.forEach(id=>{
+    const p=getP(id);
+    if(!p) return;
+    list.innerHTML += `
+      <div class="item">
+        <div class="left">
+          <div class="thumb">${p.img||"👟"}</div>
+          <div>
+            <div style="font-weight:900">${p.name}</div>
+            <div class="small">${money(p.price)} • ${p.cat}</div>
+          </div>
+        </div>
+        <div class="qty">
+          <button class="b" onclick="addCart('${p.id}')">Add</button>
+          <button class="d" onclick="toggleWish('${p.id}')">Remove</button>
+        </div>
+      </div>
+    `;
+  });
+}
+
+/* ===== RECENT ===== */
+function addRecent(id){
+  recentViewed = recentViewed.filter(x=>x!==id);
+  recentViewed.unshift(id);
+  recentViewed = recentViewed.slice(0,6);
+  save();
+}
+function openRecent(){
+  document.getElementById("recentModal").style.display="flex";
+  const list=document.getElementById("recentItems");
+  list.innerHTML="";
+  if(recentViewed.length===0){ list.innerHTML=`<div class="muted">No recent products.</div>`; return; }
+  recentViewed.forEach(id=>{
+    const p=getP(id);
+    if(!p) return;
+    list.innerHTML += `
+      <div class="item">
+        <div class="left">
+          <div class="thumb">${p.img||"👟"}</div>
+          <div>
+            <div style="font-weight:900">${p.name}</div>
+            <div class="small">${money(p.price)} • ${p.cat}</div>
+          </div>
+        </div>
+        <div class="qty">
+          <button class="b2" onclick="openDetails('${p.id}')">Open</button>
+        </div>
+      </div>
+    `;
+  });
+}
+function closeRecent(){ document.getElementById("recentModal").style.display="none"; }
+
+/* ===== COMPARE ===== */
+function toggleCompare(id){
+  if(compareList.includes(id)) compareList = compareList.filter(x=>x!==id);
+  else{
+    if(compareList.length>=2){ toast("Only 2 compare allowed"); return; }
+    compareList.push(id);
+  }
+  save(); toast("Compare updated ⚖️");
+}
+function openCompare(){
+  document.getElementById("compareModal").style.display="flex";
+  const list=document.getElementById("compareItems");
+  list.innerHTML="";
+  if(compareList.length===0){ list.innerHTML=`<div class="muted">No items selected.</div>`; return; }
+
+  compareList.forEach(id=>{
+    const p=getP(id);
+    if(!p) return;
+    list.innerHTML += `
+      <div class="item">
+        <div class="left">
+          <div class="thumb">${p.img||"👟"}</div>
+          <div>
+            <div style="font-weight:900">${p.name}</div>
+            <div class="small">Price: ${money(p.price)} • MRP: ${money(p.mrp)}</div>
+            <div class="small">⭐ ${p.rating} • Reviews ${p.reviews}</div>
+          </div>
+        </div>
+        <button class="d" onclick="toggleCompare('${p.id}')">Remove</button>
+      </div>
+    `;
+  });
+}
+function closeCompare(){ document.getElementById("compareModal").style.display="none"; }
+function clearCompare(){ compareList=[]; save(); openCompare(); }
+
+/* ===== PRODUCT DETAILS (simple) ===== */
+function openDetails(id){
+  addRecent(id);
+  const p=getP(id);
+  if(!p) return;
+  alert(
+    p.name + "\\n\\n" +
+    "Category: " + p.cat + "\\n" +
+    "Price: " + money(p.price) + " (MRP " + money(p.mrp) + ")\\n" +
+    "Rating: " + p.rating + " ⭐\\n\\n" +
+    (p.desc||"")
+  );
+}
+
+/* ===== ADMIN ===== */
+function openAdmin(){ document.getElementById("adminModal").style.display="flex"; adminRenderList(); }
+function closeAdmin(){ document.getElementById("adminModal").style.display="none"; }
+
+function adminClear(){
+  ["adminId","adminName","adminPrice","adminMrp","adminImg","adminDesc"].forEach(x=>document.getElementById(x).value="");
+  document.getElementById("adminCat").value="Sneakers";
+}
+
+function adminSave(){
+  const id=document.getElementById("adminId").value.trim();
+  const name=document.getElementById("adminName").value.trim();
+  const price=Number(document.getElementById("adminPrice").value||0);
+  const mrp=Number(document.getElementById("adminMrp").value||0);
+  const cat=document.getElementById("adminCat").value;
+  const img=document.getElementById("adminImg").value.trim() || "👟";
+  const desc=document.getElementById("adminDesc").value.trim();
+
+  if(!id||!name||price<=0){ toast("Fill ID, Name, Price"); return; }
+
+  const ex=products.find(p=>p.id===id);
+  if(ex){
+    ex.name=name; ex.price=price; ex.mrp=mrp||price; ex.cat=cat; ex.img=img; ex.desc=desc;
+    toast("Product updated ✅");
+  }else{
+    products.push({id,name,price,mrp:mrp||price,cat,img,rating:4.2,reviews:1,desc});
+    toast("Product added ✅");
+  }
+  save(); render(); adminRenderList(); adminClear();
+}
+
+function adminDelete(id){
+  products = products.filter(p=>p.id!==id);
+  cart = cart.filter(x=>x.id!==id);
+  wish = wish.filter(x=>x!==id);
+  compareList = compareList.filter(x=>x!==id);
+  recentViewed = recentViewed.filter(x=>x!==id);
+  save(); render(); adminRenderList(); toast("Deleted ❌");
+}
+
+function adminEdit(id){
+  const p=getP(id); if(!p) return;
+  document.getElementById("adminId").value=p.id;
+  document.getElementById("adminName").value=p.name;
+  document.getElementById("adminPrice").value=p.price;
+  document.getElementById("adminMrp").value=p.mrp;
+  document.getElementById("adminCat").value=p.cat;
+  document.getElementById("adminImg").value=p.img;
+  document.getElementById("adminDesc").value=p.desc||"";
+  toast("Edit mode ✍️");
+}
+
+function adminRenderList(){
+  const box=document.getElementById("adminList");
+  box.innerHTML="";
+  products.forEach(p=>{
+    box.innerHTML += `
+      <div class="item">
+        <div class="left">
+          <div class="thumb">${p.img||"👟"}</div>
+          <div>
+            <div style="font-weight:900">${p.name}</div>
+            <div class="small">${p.id} • ${p.cat} • ${money(p.price)}</div>
+          </div>
+        </div>
+        <div class="qty">
+          <button class="w" onclick="adminEdit('${p.id}')">Edit</button>
+          <button class="d" onclick="adminDelete('${p.id}')">Delete</button>
+        </div>
+      </div>
+    `;
+  });
+}
+
+/* ===== COUNTS + MISC ===== */
+function updateCounts(){
+  document.getElementById("cCount").innerText = cart.reduce((s,x)=>s+x.qty,0);
+  document.getElementById("wCount").innerText = wish.length;
+}
+function toggleDark(){
+  darkMode = !darkMode;
+  document.body.classList.toggle("dark", darkMode);
+  save();
+}
+function clearStorage(){
+  if(confirm("Clear all saved data?")){
+    localStorage.clear();
+    location.reload();
+  }
+}
+
+/* INIT */
+document.body.classList.toggle("dark", darkMode);
+render();
+adminRenderList();
+updateCounts();
+</script>
+
+</body>
+</html>
